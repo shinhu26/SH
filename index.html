@@ -51,11 +51,16 @@
       background-color: #216347;
       transition: background-color 0.2s ease;
     }
+    /* iframe 從狀態列（瀏覽器瀏海）下方開始，上方露出的就是主題色，
+       避免 iframe 內無法取得 safe-area 時，標題列被狀態列蓋住 */
     .gas-frame {
       position: fixed;
-      inset: 0;
+      top: env(safe-area-inset-top, 0px);
+      right: 0;
+      bottom: 0;
+      left: 0;
       width: 100%;
-      height: 100%;
+      height: calc(100% - env(safe-area-inset-top, 0px));
       border: 0;
       display: block;
       background-color: #eef5f1;
@@ -63,24 +68,35 @@
   </style>
 </head>
 <body>
-  <!-- 注意：重新部署 GAS「新版本」後，若 /exec 網址有變更，請同步更新下方 src -->
+  <!-- 注意：只有「新增部署」才會產生新的 /exec 網址；
+       在原部署上「編輯 → 新版本」網址不會變，請優先用這種方式更新 -->
   <iframe
     id="gasAppFrame"
     class="gas-frame"
+    title="新湖進領料系統"
     src="https://script.google.com/macros/s/AKfycbwmPVy-p_j60QtWAgHTHKCOjnn7Hkg1X6aG4YywhJ3itFZLykeyjb1NCiD5dJQuxZSL/exec"
-    allow="camera; microphone; geolocation"
-    allowfullscreen>
+    allow="camera">
   </iframe>
 
   <script>
-    window.addEventListener("message", function (event) {
-      if (!event.data || event.data.type !== "XINHU_THEME_SYNC") return;
-      const color = event.data.solidColor || "#216347";
-      document.documentElement.style.backgroundColor = color;
-      document.body.style.backgroundColor = color;
-      const meta = document.getElementById("metaThemeColor");
-      if (meta) meta.setAttribute("content", color);
-    });
+    (function () {
+      // GAS 頁面實際在 script.google.com 內的 *.googleusercontent.com 子 frame 執行
+      const ALLOWED_ORIGIN_RE = /^https:\/\/([a-z0-9-]+\.)*googleusercontent\.com$/i;
+      const ALLOWED_ORIGINS = ["https://script.google.com"];
+      const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;
+
+      window.addEventListener("message", function (event) {
+        if (!(ALLOWED_ORIGINS.includes(event.origin) || ALLOWED_ORIGIN_RE.test(event.origin))) return;
+        const data = event.data;
+        if (!data || data.type !== "XINHU_THEME_SYNC") return;
+
+        const color = HEX_COLOR_RE.test(String(data.solidColor || "")) ? data.solidColor : "#216347";
+        document.documentElement.style.backgroundColor = color;
+        document.body.style.backgroundColor = color;
+        const meta = document.getElementById("metaThemeColor");
+        if (meta) meta.setAttribute("content", color);
+      });
+    })();
   </script>
 </body>
 </html>
